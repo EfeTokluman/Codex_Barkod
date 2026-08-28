@@ -6,7 +6,7 @@ Uygulamada İş Oluştura Bilir Personel Hesabı Açarak Ona İş ataya Bilir Ve
 Şu Anda Sadece Sunucu Tarafını Yazdımki Oda Tam Değil
 
 NOT:Güvenlk testleri Sadece ai yaptırılmıştır bütün program kendim yazdım
-
+2 NOT:Bu Uygulama Sadece Local Ağlarda Çalıştırılmak İçin Yapılmıştır Ama İllaki Ben 2 3 Yeri Bağlamak İstiyorsanızda Tailscale Gibi Şifreli Tünelden Geçirirseniz Sorun Muhtemelen Olma   
 YASAL UYARI: Projeden Kaynaklı Ola Bilicek Hiçbir Zararın Sorumluluğunu Almıyorum Bu Proje Sadece Bir Hobi Projesidir.
 
 Chat Gpt Tarafından Yapılan Güvenlik Testleri:
