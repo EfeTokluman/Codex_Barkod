@@ -1,5 +1,3 @@
-import curses
-
 from fastapi import FastAPI
 import sqlite3
 import random
@@ -14,7 +12,9 @@ def init_db():
     CREATE TABLE IF NOT EXISTS jobs (
        id INTEGER PRIMARY KEY AUTOINCREMENT,
        title TEXT NOT NULL,
-       status TEXT DEFAULT 'beklemede'
+       status TEXT DEFAULT 'beklemede',
+       kime TEXT DEFAULT '0',
+       files TEXT DEFAULT ''
        )
     """)
     cursor.execute("""
@@ -54,7 +54,7 @@ def create_user(username: str, password: str,token: int, role: str = "user",):
     return {"message": "Kunlanıcı Eklendi","username": username, "role": role}
 
 @app.post("/users/delete")
-def delete_user(username:str ,token: int , role: str,):
+def delete_user(username:str ,token: int):
     try:
         token_ok(token,"admin") #burası tokeni yetkilendirme/ret yeri
     except Exception:
@@ -98,33 +98,51 @@ def login(username:str,password:str):
 
 @app.get("/")
 def read_root():
-    return{"api_version":"CSS_1.0","api_version_human":"Codex Secure Server 1.0"}
+    return{"api_version":"CBS_2.3","api_version_human":"Codex Barkod Sunucusu 2.3"}
 
 @app.get("/jobs")
 def get_jobs(token:int):
     try:
-        token_ok(token,"user")
+        user_id , role =token_ok(token,"user")
     except Exception:
         return {"error":"Giriş Başarısız Database RET Verdi Hata Kodu:403"}
 
     conn = sqlite3.connect("jobs.db")
     cursor = conn.cursor()
-    cursor.execute("SELECT id,title, status FROM jobs")
+
+    try:
+        if role == "admin":
+            cursor.execute("SELECT id,title,status,kime,files FROM jobs")
+        else:
+            cursor.execute("SELECT id, title ,status ,kime,files FROM jobs WHERE kime = ?", (str(user_id),))
+    except sqlite3.OperationalError as hata:
+        return {"error":"Arama Sorgusu Başarısız","hata_kodu":hata}
     rows = cursor.fetchall()
     conn.close()
-    jobs = [{"id": r[0], "title": r[1], "status": r[2]} for r in rows if len(r) >= 3]
+
+
+    jobs = []
+    for r in rows:
+        dosya_liste= r[4].split(",") if r[4] else []
+        jobs.append({
+            "id": r[0],
+            "title": r[1],
+            "status": r[2],
+            "kime": r[3],
+            "files": dosya_liste
+        })
     return jobs
 
 @app.post("/jobs")
-def create_job(title: str,token:int):
+def create_job(title: str,kime: str,files:str,token:int):
     try:
-        token_ok(token,"user")
+        user_id,role = token_ok(token,"user")
     except Exception:
         return {"error":"Giriş Başarısız Database RET Verdi Hata Kodu:403"}
 
     conn = sqlite3.connect("jobs.db")
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO jobs (title) VALUES (?)", (title,))
+    cursor.execute("INSERT INTO jobs (title,kime,files) VALUES (?,?,?)", (title,kime,files))
     conn.commit()
     conn.close()
     return {"message": "İş Eklendi","title:": title}
@@ -134,19 +152,19 @@ def token_ok(token,gerekli_rol):
     conn = sqlite3.connect("jobs.db")
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT role, role FROM users WHERE token = ?",
+        "SELECT id, role FROM users WHERE token = ?",
         (token,)
     )
     row = cursor.fetchone()
     conn.close()
-
     if row is None:
         raise Exception("ret - token hatası!")
     else:
-        if "admin" == row[0]: # admin yetkisi en üste
-            return
-        if gerekli_rol == row[0]:
-            pass
+        user_id, role = row
+        if "admin" == role: # admin yetkisi en üste
+            return user_id,role
+        if gerekli_rol == role:
+            return user_id,role
         else:
             raise Exception("ret - rol hatası!")
 
