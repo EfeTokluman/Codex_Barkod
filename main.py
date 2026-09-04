@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 import sqlite3
 import random
+import hashlib
 
 create_admin = False
 
@@ -38,7 +39,7 @@ def create_user(username: str, password: str,token: int, role: str = "user",):
         token_ok(token,"admin")
     except Exception:
         return {"error":"Giriş Başarısız Database RET Verdi Hata Kodu:403"}
-
+    password = hashla(password)
     conn = sqlite3.connect("jobs.db")
     cursor = conn.cursor()
     try:
@@ -78,6 +79,7 @@ def delete_user(username:str ,token: int):
 
 @app.post("/login")
 def login(username:str,password:str):
+    password = hashla(password)
     conn = sqlite3.connect("jobs.db")
     cursor = conn.cursor()
     cursor.execute(
@@ -88,9 +90,10 @@ def login(username:str,password:str):
     if row is None:
         return {"error":"403 - Giriş REDDEDİLDİ"}
     token = random.randint(10000000, 99999999)
+    token_db = hashla(token)
     cursor.execute(
         "UPDATE users SET token = ? WHERE id = ?",
-        (token, row[0])
+        (token_db, row[0])
     )
     conn.commit()
     conn.close()
@@ -149,6 +152,7 @@ def create_job(title: str,kime: str,files:str,token:int):
 
 
 def token_ok(token,gerekli_rol):
+    token = hashla(token)
     conn = sqlite3.connect("jobs.db")
     cursor = conn.cursor()
     cursor.execute(
@@ -179,4 +183,10 @@ def create_admin_user():
         conn.commit()
         conn.close()
         print("Admin Hesabı Oluşturuldu lütfen admin hesap oluşturmayı kapat ve reboot at!")
+
+def hashla(password):
+    sha256password = hashlib.sha256(password.encode()).hexdigest()
+    return sha256password
+
+
 create_admin_user()
