@@ -9,11 +9,12 @@ def ayarla(url):
 def baglan():
     bir = requests.get(url_sunucu)
     json = bir.json()
-    if json["api_version"] == "CSS_1.0":
+    if json["api_version"] == "CBS_2.3":
         print("Eşleşme Tamamlandı Sunucu Uyumlu")
         print(json)
         login("root","codex_barkod+123")
     else:
+        print("Sunucu Versiyonları uyuşmuyor!")
         print(json)
 
 ayarla("http://127.0.0.1:8000/")
@@ -67,4 +68,4 @@ def user_delete(username):
     delete_user_json = delete_user.json()
     print(delete_user_json)
 
-baglan()
+#baglan() Api Test İçin Burayı Etkinleştirin Ve baglan fonkiyonundaki hesap bilgilerini girin
