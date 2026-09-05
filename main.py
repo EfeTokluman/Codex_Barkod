@@ -1,12 +1,16 @@
+import json
+
 from fastapi import FastAPI
 import sqlite3
 import random
-import hashlib
+from cryptography.hazmat.primitives.kdf.argon2 import Argon2id
+import os
 
 create_admin = False
 
 app = FastAPI()
 def init_db():
+    global salt
     conn = sqlite3.connect("jobs.db")
     cursor = conn.cursor()
     cursor.execute("""
@@ -29,6 +33,18 @@ def init_db():
     """)
     conn.commit()
     conn.close()
+    try:
+        with open("setting.json","r") as dosya:
+            dosya_json = json.load(dosya)
+            salt = bytes.fromhex(dosya_json["salt"])
+    except FileNotFoundError:
+        print("ayarlar.json Bulunamadı Otomatik Olarak Oluşturuluyor...")
+        with open("setting.json","w") as dosya:
+            salt = os.urandom(16)
+            salt_hex = salt.hex()
+            ayarlar = {"salt":salt_hex}
+            json.dump(ayarlar, dosya)
+
     print("database OK")
 
 init_db()
@@ -79,7 +95,7 @@ def delete_user(username:str ,token: int):
 
 @app.post("/login")
 def login(username:str,password:str):
-    password = hashla(password)
+    password = hashla(str(password))
     conn = sqlite3.connect("jobs.db")
     cursor = conn.cursor()
     cursor.execute(
@@ -90,7 +106,7 @@ def login(username:str,password:str):
     if row is None:
         return {"error":"403 - Giriş REDDEDİLDİ"}
     token = random.randint(10000000, 99999999)
-    token_db = hashla(token)
+    token_db = hashla(str(token))
     cursor.execute(
         "UPDATE users SET token = ? WHERE id = ?",
         (token_db, row[0])
@@ -101,7 +117,7 @@ def login(username:str,password:str):
 
 @app.get("/")
 def read_root():
-    return{"api_version":"CBS_2.3","api_version_human":"Codex Barkod Sunucusu 2.3"}
+    return{"api_version":"CBS_3.0","api_version_human":"Codex Barkod Sunucusu 3.0"}
 
 @app.get("/jobs")
 def get_jobs(token:int):
@@ -152,7 +168,7 @@ def create_job(title: str,kime: str,files:str,token:int):
 
 
 def token_ok(token,gerekli_rol):
-    token = hashla(token)
+    token = hashla(str(token))
     conn = sqlite3.connect("jobs.db")
     cursor = conn.cursor()
     cursor.execute(
@@ -178,15 +194,23 @@ def create_admin_user():
         cursor = conn.cursor()
         cursor.execute(
             "INSERT INTO users (username, password, role) VALUES (?, ?, ?)",
-            ("root", "codex_barkod+123" ,"admin")
+            ("root", hashla("codex_barkod+123") ,"admin")
         )
         conn.commit()
         conn.close()
         print("Admin Hesabı Oluşturuldu lütfen admin hesap oluşturmayı kapat ve reboot at!")
 
 def hashla(password):
-    sha256password = hashlib.sha256(password.encode()).hexdigest()
-    return sha256password
+    kdf = Argon2id(
+        salt=salt,
+        length=32,
+        iterations=1,
+        lanes=4,
+        memory_cost=64 * 1024,
+        ad=None,
+        secret=None,
+    )
+    return(kdf.derive(password.encode()).hex())
 
 
 create_admin_user()
