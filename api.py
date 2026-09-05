@@ -68,4 +68,4 @@ def user_delete(username):
     delete_user_json = delete_user.json()
     print(delete_user_json)
 
-baglan() #Api Test İçin Burayı Etkinleştirin Ve baglan fonkiyonundaki hesap bilgilerini girin
+#baglan() #Api Test İçin Burayı Etkinleştirin Ve baglan fonkiyonundaki hesap bilgilerini girin
